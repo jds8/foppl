@@ -41,6 +41,7 @@
                    "beta" #'beta
                    "bernoulli" #'bernoulli
                    "exponential" #'exponential
+                   "discrete" #'discrete
                    "append" #'foppl.primitives/append
                    "+" #'+
                    "-" #'-
@@ -55,6 +56,10 @@
                    "get"  #'get
                    "last" #'last
                    "first" #'first
+                   "second" #'second
+                   "rest" #'rest
+                   "cons" #'cons
+                   "conj" #'conj
                    "sample*" #'sample*
                    "observe*" (fn [& args] nil)
                    ))
