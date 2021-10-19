@@ -2,9 +2,16 @@
 (require '[clojure.core.match :refer [match]])
 (require '[anglican.runtime :refer :all])
 (load "primitives")
+(require '[clojure.java.shell :as shell :refer [sh]])
+(use '[clojure.java.shell :only [sh]])
 
-(def all-records (json/read-str (slurp "/Users/MacMag/Desktop/Computer Science/ProbProg/CS532-HW2/2.json")
+(def all-records (json/read-str (slurp "/Users/MacMag/Desktop/Computer Science/ProbProg/CS532-HW2/1.json")
                 :key-fn str))
+
+(defn desugar [i]
+  (json/read-str ((shell/with-sh-dir
+    "/Users/MacMag/Desktop/Computer Science/ProbProg/daphne"
+    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/" i ".daphne"))) :out)))
 
 (defn evaluate [e s l]
   (match [e]
@@ -22,19 +29,19 @@
          [([e0 & t] :seq)] (let [cs (map (fn [exp] (first (evaluate exp s l))) t)
                                  f (get foppl.primitives/env e0 false)]
                              (if f [(apply f cs) s] (let [[vs e0'] (rho e0)]
-                                 (do (println e0 " using " (merge l (zipmap vs cs))) (evaluate e0' s (merge l (zipmap vs cs)))))))
+                                 (evaluate e0' s (merge l (zipmap vs cs))))))
          [nil] nil
          ; TODO if we add strings as primitives, then this will have to change
          ; checking if cv is not false is weird, but (get l c false) returns nil
          ; for variables bound to the output of observe statements, so I need it
-         [c] (let [cv (get l c false)] (if (not (= cv false)) (do (println c " is " cv) [cv s]) [(double c) s]))
+         [c] (let [cv (get l c false)] (if (not (= cv false)) [cv s]) [(double c) s])
          ))
 
 (def rho {})
 
 (defn evaluate_program [ast]
   (match [ast]
-         [[["defn" nm vs body] & t]] (do (def rho (merge rho {nm [vs body]})) (println body) (evaluate_program t))
+         [[["defn" nm vs body] & t]] (do (def rho (merge rho {nm [vs body]})) (evaluate_program t))
          [[h]] (evaluate h [] {})))
 
 (evaluate_program all-records)
