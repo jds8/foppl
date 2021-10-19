@@ -23,8 +23,11 @@
                                  f (get foppl.primitives/env e0 false)]
                              (if f [(apply f cs) s] (let [[vs e0'] (rho f)]
                                  (evaluate e0' s (merge l (zipmap vs cs))))))
+         [nil] nil
          ; TODO if we add strings as primitives, then this will have to change
-         [c] (let [cv (get l c false)] (if cv [cv s] [(double c) s]))
+         ; checking if cv is not false is weird, but (get l c false) returns nil
+         ; for variables bound to the output of observe statements, so I need it
+         [c] (let [cv (get l c false)] (if (not (= cv false)) [cv s] [(do (println "cleric: " c " and " l " but " cv) (double c)) s]))
          ))
 
 (def rho {})
