@@ -10,8 +10,12 @@
 
 (defn desugar [i]
   (json/read-str ((shell/with-sh-dir
-    "/Users/MacMag/Desktop/Computer Science/ProbProg/daphne"
+    "/home/jsefas/probprog/daphne"
     (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/" i ".daphne"))) :out)))
+
+(def all-records1 (desugar 1))
+
+(def rho {})
 
 (defn evaluate [e s l]
   (match [e]
@@ -34,10 +38,8 @@
          ; TODO if we add strings as primitives, then this will have to change
          ; checking if cv is not false is weird, but (get l c false) returns nil
          ; for variables bound to the output of observe statements, so I need it
-         [c] (let [cv (get l c false)] (if (not (= cv false)) [cv s]) [(double c) s])
+         [c] (let [cv (get l c false)] (if (not (= cv false)) [cv s] [(double c) s]))
          ))
-
-(def rho {})
 
 (defn evaluate_program [ast]
   (match [ast]

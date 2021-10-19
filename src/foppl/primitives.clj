@@ -33,8 +33,6 @@
     (let [R (reduce (partial m/join-along 0) (repeat r M))]
       (reduce (partial m/join-along 1) (repeat c R))))
 
-(def graph_env (assoc foppl.primitives/env "observe*" (fn [& args] nil)))
-
 (def env (hash-map "normal" #'normal
                    "sqrt" #'sqrt
                    "uniform-continuous" #'uniform-continuous

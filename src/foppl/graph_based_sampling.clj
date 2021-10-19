@@ -2,7 +2,10 @@
 (require '[clojure.core.match :refer [match]])
 (require '[anglican.runtime :refer :all])
 (load "primitives")
+(require '[clojure.java.shell :as shell :refer [sh]])
+(use '[clojure.java.shell :only [sh]])
 
+(str ((sh "pwd") :out) "1.daphne")
 (def all-records (json/read-str (slurp "/Users/MacMag/Desktop/Computer Science/ProbProg/CS532-HW2/graph_test_2.json")
                 :key-fn str))
 
