@@ -58,6 +58,11 @@
                    "rest" #'rest
                    "cons" #'cons
                    "conj" #'conj
+                   "mat-add" #'mat-add
+                   "mat-mul" #'mat-mul
+                   "mat-repmat" #'mat-repmat
+                   "mat-tanh" #'mat-tanh
+                   "mat-transpose" #'mat-transpose
                    "sample*" #'sample*
                    "observe*" (fn [& args] nil)
                    ))
