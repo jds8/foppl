@@ -82,7 +82,6 @@
             (if (> (abs (diff truth ret)) 0.001)
               (let [msg (str "return value " ret " is not equal to truth " truth " for exp " ast)]
                     (do (print msg) msg)
-              (do (print "passed test " i) (str "passed test " i))))))
-  )
+              (do (print "passed test " i) (str "passed test " i))))))))
 
 (run-deterministic-tests)

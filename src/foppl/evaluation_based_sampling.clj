@@ -37,9 +37,9 @@
 
 (defn get-stream
   ([ast] (get-stream ast 1))
-  ([ast n] (lazy-seq (cons (evaluate_program ast) (get-stream ast (inc n))))))
+  ([ast n] (lazy-seq (cons (evaluate-program ast) (get-stream ast (inc n))))))
 
-(take 5 (get-stream all-records4))
+(take 1 (get-stream all-records))
 
 (defn diff [ret truth]
   (if (= (type truth) clojure.lang.PersistentVector)
@@ -47,15 +47,15 @@
     (- ret truth)))
 
 (defn run-deterministic-tests []
-  (for [i (map (fn [x] (+ 1 x)) (range 13))]
-    (do (println (str "running test " i))
+  (for [i (range 1 13)]
+    (do (print (str "running test " i " "))
     (let [ast (desugar-tests "deterministic" i)
-          truth (load-truth i)
+          truth (load-truth "deterministic" i)
           [ret sig] (evaluate-program ast)]
             (if (> (abs (diff truth ret)) 0.001)
-              (str "return value " ret " is not equal to truth " truth " for exp " ast)
-              (str "passed test " i)))))
-  )
+              (let [msg (str "return value " ret " is not equal to truth " truth " for exp " ast)]
+                    (do (println msg) msg))
+                    (do (println "passed test " i) (str "passed test " i)))))))
 
 (defn cwd [] (let [pwd ((sh "pwd") :out)] (str (.substring pwd 0 (- (count pwd) 1)) "/")))
 (defn desugar-tests [type i]
@@ -63,16 +63,32 @@
     (str (cwd) "../daphne")
     (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/tests/" type "/test_" i ".daphne"))) :out)))
 
-(defn load-truth [i]
-  (load-file (str (cwd) "../CS532-HW2/programs/tests/deterministic/test_" i ".truth")))
+(defn load-truth [type i]
+  (load-file (str (cwd) "../CS532-HW2/programs/tests/" type "/test_" i ".truth")))
+
+;; (defn run_prob_test [samples truth]
+;;   (let [distrs {"normal" norm "beta" beta "exponential" expon "normalmix" normalmix}]
+;;     ))
+
+;; (defn run-probabilistic-tests []
+;;   (let [num_samples (int 1e4) max_p_value 1e-4]
+;;     (for [i (range 1 7)]
+;;       (do (print (str "running test " i " "))
+;;       (let [ast (desugar-tests "probabilistic" i)
+;;             truth (load-truth "probabilistic" i)
+;;             samples (take num_samples (get-stream ast))
+;;             p_val (run_prob_test samples truth)]
+;;               (if (> (p_val max_p_value))
+;;                 (do (println "failed test " i) (str "failed test " i))
+;;                 (do (println "passed test " i) (str "passed test " i))))))))
+
+
+(def all-records (desugar-tests "deterministic" 13))
+(evaluate-program all-records)
+
+(run-deterministic-tests)
 
 (defn desugar-programs [i]
   (json/read-str ((shell/with-sh-dir
     (str (cwd) "../daphne")
     (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/" i ".daphne"))) :out)))
-
-(def all-records4 (desugar2 1))
-(evaluate-program all-records4)
-(evaluate-program all-records7)
-
-(run-deterministic-tests)
