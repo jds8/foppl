@@ -5,18 +5,7 @@
 (require '[clojure.java.shell :as shell :refer [sh]])
 (use '[clojure.java.shell :only [sh]])
 
-(def all-records (json/read-str (slurp "/Users/MacMag/Desktop/Computer Science/ProbProg/CS532-HW2/1.json")
-                :key-fn str))
-
-(defn desugar [i]
-  (json/read-str ((shell/with-sh-dir
-    (str (cwd) "../daphne")
-    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/tests/deterministic/test_" i ".daphne"))) :out)))
-
-(def all-records1 (desugar 1))
-
 (def rho {})
-
 (defn evaluate [e s l]
   (match [e]
          [["sample" d]] (let [[dist sig] (evaluate d s l)
@@ -41,12 +30,49 @@
          [c] (let [cv (get l c false)] (if (not (= cv false)) [cv s] [c s]))
          ))
 
-(defn evaluate_program [ast]
+(defn evaluate-program [ast]
   (match [ast]
-         [[["defn" nm vs body] & t]] (do (def rho (merge rho {nm [vs body]})) (evaluate_program t))
+         [[["defn" nm vs body] & t]] (do (def rho (merge rho {nm [vs body]})) (evaluate-program t))
          [[h]] (evaluate h [] {})))
 
-(evaluate_program all-records)
+(defn get-stream
+  ([ast] (get-stream ast 1))
+  ([ast n] (lazy-seq (cons (evaluate_program ast) (get-stream ast (inc n))))))
 
-(def all-records7 (desugar 7))
-(evaluate_program all-records7)
+(take 5 (get-stream all-records4))
+
+(defn diff [ret truth]
+  (if (= (type truth) clojure.lang.PersistentVector)
+    (reduce + (map - ret truth))
+    (- ret truth)))
+
+(defn run-deterministic-tests []
+  (for [i (map (fn [x] (+ 1 x)) (range 13))]
+    (do (println (str "running test " i))
+    (let [ast (desugar-tests "deterministic" i)
+          truth (load-truth i)
+          [ret sig] (evaluate-program ast)]
+            (if (> (abs (diff truth ret)) 0.001)
+              (str "return value " ret " is not equal to truth " truth " for exp " ast)
+              (str "passed test " i)))))
+  )
+
+(defn cwd [] (let [pwd ((sh "pwd") :out)] (str (.substring pwd 0 (- (count pwd) 1)) "/")))
+(defn desugar-tests [type i]
+  (json/read-str ((shell/with-sh-dir
+    (str (cwd) "../daphne")
+    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/tests/" type "/test_" i ".daphne"))) :out)))
+
+(defn load-truth [i]
+  (load-file (str (cwd) "../CS532-HW2/programs/tests/deterministic/test_" i ".truth")))
+
+(defn desugar-programs [i]
+  (json/read-str ((shell/with-sh-dir
+    (str (cwd) "../daphne")
+    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/" i ".daphne"))) :out)))
+
+(def all-records4 (desugar2 1))
+(evaluate-program all-records4)
+(evaluate-program all-records7)
+
+(run-deterministic-tests)
