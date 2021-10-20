@@ -92,3 +92,37 @@
   (json/read-str ((shell/with-sh-dir
     (str (cwd) "../daphne")
     (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/" i ".daphne"))) :out)))
+
+(defn sample-task [i num-samples]
+  (let [ast (desugar-programs i)
+        samples (map first (take num-samples (get-stream ast)))]
+    samples))
+
+(defn div [x d]
+  (match [x]
+         [[h]] (vector (div h d))
+         [([h & t] :seq)] (cons (div h d) (map (fn [x] (div x d)) t))
+         [a] (/ a d)))
+
+(defn calc-expectation [samples]
+  (if (= (type (first samples)) clojure.lang.PersistentVector)
+    (map (fn [x] (div x (count samples))) (apply foppl.primitives/mat-add samples))
+    (div (reduce + samples) (count samples))))
+
+;; calculate expectations for tasks 1-3
+(def samples1 (sample-task 1 1000))
+(def samples2 (sample-task 2 1000))
+(def samples3 (sample-task 3 1000))
+
+(calc-expectation samples1)
+(calc-expectation samples2)
+(calc-expectation samples3)
+
+;; calculate expectation of sample4 neural network
+(def first-sum (apply foppl.primitives/mat-add (map (fn [x] (first x)) samples4)))
+(def second-sum (apply foppl.primitives/mat-add (map (fn [x] (first (rest x))) samples4)))
+(def third-sum (apply foppl.primitives/mat-add (map (fn [x] (first (rest (rest x)))) samples4)))
+(def fourth-sum  (apply foppl.primitives/mat-add (map (fn [x] (first (rest (rest (rest x))))) samples4)))
+(def full-mat (vector first-sum second-sum third-sum fourth-sum))
+(def expected-full-mat (div full-mat (count samples4)))
+
