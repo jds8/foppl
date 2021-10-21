@@ -64,22 +64,30 @@
                     (do (println msg) msg))
                     (do (println "passed test " i) (str "passed test " i)))))))
 
-;; (defn run_prob_test [samples truth]
-;;   (let [distrs {"normal" norm "beta" beta "exponential" expon "normalmix" normalmix}]
+;; (defn run-prob-test [samples]
+;;   (let [
+;;         sorted (sort samples)
+;;         idx (range 1 (+ (count samples) 1))
+;;         fracs (map (fn [x] (/ x (count samples))) idx)
+;;         D+ (apply max (map - fracs sorted))
+;;         D- (apply max (map - sorted (map (fn [x] (- x (/ 1 (count samples)))) fracs)))
+;;         D (max D+ D-)
+;;         ]
+;;     (> D 0.565)
 ;;     ))
 
 ;; (defn run-probabilistic-tests []
-;;   (let [num_samples (int 1e4) max_p_value 1e-4]
+;;   (let [num-samples (int 1e4) max_p_value 1e-4]
 ;;     (for [i (range 1 7)]
 ;;       (do (print (str "running test " i " "))
 ;;       (let [ast (desugar-tests "probabilistic" i)
-;;             truth (load-truth "probabilistic" i)
-;;             samples (take num_samples (get-stream ast))
-;;             p_val (run_prob_test samples truth)]
-;;               (if (> (p_val max_p_value))
+;;             samples (map (fn [x] (first x)) (take num-samples (get-stream ast)))
+;;             passed (run-prob-test samples)]
+;;               (if passed
 ;;                 (do (println "failed test " i) (str "failed test " i))
 ;;                 (do (println "passed test " i) (str "passed test " i))))))))
 
+;; (run-probabilistic-tests)
 
 (run-deterministic-tests)
 
