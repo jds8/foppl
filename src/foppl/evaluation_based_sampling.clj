@@ -1,9 +1,9 @@
 (require '[clojure.data.json :as json])
 (require '[clojure.core.match :refer [match]])
-(require '[anglican.runtime :refer :all])
 (load "primitives")
 (require '[clojure.java.shell :as shell :refer [sh]])
 (use '[clojure.java.shell :only [sh]])
+(use '(incanter core stats charts io))
 
 (def rho {})
 (defn evaluate [e s l]
@@ -39,12 +39,19 @@
   ([ast] (get-stream ast 1))
   ([ast n] (lazy-seq (cons (evaluate-program ast) (get-stream ast (inc n))))))
 
-(take 1 (get-stream all-records))
-
 (defn diff [ret truth]
   (if (= (type truth) clojure.lang.PersistentVector)
     (reduce + (map - ret truth))
     (- ret truth)))
+
+(defn cwd [] (let [pwd ((sh "pwd") :out)] (str (.substring pwd 0 (- (count pwd) 1)) "/")))
+(defn desugar-tests [type i]
+  (json/read-str ((shell/with-sh-dir
+    (str (cwd) "../daphne")
+    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/tests/" type "/test_" i ".daphne"))) :out)))
+
+(defn load-truth [type i]
+  (load-file (str (cwd) "../CS532-HW2/programs/tests/" type "/test_" i ".truth")))
 
 (defn run-deterministic-tests []
   (for [i (range 1 13)]
@@ -56,15 +63,6 @@
               (let [msg (str "return value " ret " is not equal to truth " truth " for exp " ast)]
                     (do (println msg) msg))
                     (do (println "passed test " i) (str "passed test " i)))))))
-
-(defn cwd [] (let [pwd ((sh "pwd") :out)] (str (.substring pwd 0 (- (count pwd) 1)) "/")))
-(defn desugar-tests [type i]
-  (json/read-str ((shell/with-sh-dir
-    (str (cwd) "../daphne")
-    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/tests/" type "/test_" i ".daphne"))) :out)))
-
-(defn load-truth [type i]
-  (load-file (str (cwd) "../CS532-HW2/programs/tests/" type "/test_" i ".truth")))
 
 ;; (defn run_prob_test [samples truth]
 ;;   (let [distrs {"normal" norm "beta" beta "exponential" expon "normalmix" normalmix}]
@@ -83,9 +81,6 @@
 ;;                 (do (println "passed test " i) (str "passed test " i))))))))
 
 
-(def all-records (desugar-tests "deterministic" 13))
-(evaluate-program all-records)
-
 (run-deterministic-tests)
 
 (defn desugar-programs [i]
@@ -98,31 +93,58 @@
         samples (map first (take num-samples (get-stream ast)))]
     samples))
 
-(defn div [x d]
+(defn divide [x d]
   (match [x]
          [[h]] (vector (div h d))
-         [([h & t] :seq)] (cons (div h d) (map (fn [x] (div x d)) t))
+         [([h & t] :seq)] (cons (divide h d) (map (fn [x] (divide x d)) t))
          [a] (/ a d)))
 
 (defn calc-expectation [samples]
   (if (= (type (first samples)) clojure.lang.PersistentVector)
-    (map (fn [x] (div x (count samples))) (apply foppl.primitives/mat-add samples))
-    (div (reduce + samples) (count samples))))
+    (map (fn [x] (divide x (count samples))) (apply foppl.primitives/mat-add samples))
+    (divide (reduce + samples) (count samples))))
 
 ;; calculate expectations for tasks 1-3
-(def samples1 (sample-task 1 1000))
-(def samples2 (sample-task 2 1000))
-(def samples3 (sample-task 3 1000))
+(def mu (sample-task 1 1000))
+(def slope-bias (sample-task 2 1000))
+(def hmm (sample-task 3 1000))
+(def nn (sample-task 4 1000))
 
-(calc-expectation samples1)
-(calc-expectation samples2)
-(calc-expectation samples3)
+;; create conditional histograms
+(save (histogram mu) "mu.png")
 
-;; calculate expectation of sample4 neural network
-(def first-sum (apply foppl.primitives/mat-add (map (fn [x] (first x)) samples4)))
-(def second-sum (apply foppl.primitives/mat-add (map (fn [x] (first (rest x))) samples4)))
-(def third-sum (apply foppl.primitives/mat-add (map (fn [x] (first (rest (rest x)))) samples4)))
-(def fourth-sum  (apply foppl.primitives/mat-add (map (fn [x] (first (rest (rest (rest x))))) samples4)))
+(def slope (map (fn [x] (first x)) slope-bias))
+(def bias (map (fn [x] (second x)) slope-bias))
+(save (histogram slope) "slope.png")
+(save (histogram bias) "bias.png")
+
+(def hmm1 (map (fn [x] (first x)) hmm))
+(save (histogram hmm1) "hmm1.png")
+(def hmm6 (map (fn [x] (get x 6)) hmm))
+(save (histogram hmm6) "hmm6.png")
+(def hmm11 (map (fn [x] (get x 11)) hmm))
+(save (histogram hmm11) "hmm11.png")
+(def hmm16 (map (fn [x] (get x 16)) hmm))
+(save (histogram hmm16) "hmm16.png")
+
+(def nnw0 (map (fn [x] (first (first (first x)))) nn))
+(save (histogram nnw0) "nnw0.png")
+(def nnb0 (map (fn [x] (first (first (get x 1)))) nn))
+(save (histogram nnb0) "nnb0.png")
+(def nnw1 (map (fn [x] (first (first (get x 2)))) nn))
+(save (histogram nnw1) "nnw1.png")
+(def nnb1 (map (fn [x] (first (first (get x 3)))) nn))
+(save (histogram nnb1) "nnb1.png")
+
+;; calculate expectations of first three tasks
+(calc-expectation mu)
+(calc-expectation slope-bias)
+(calc-expectation hmm)
+
+;; calculate expectation of neural network task
+(def first-sum (apply foppl.primitives/mat-add (map (fn [x] (first x)) nn)))
+(def second-sum (apply foppl.primitives/mat-add (map (fn [x] (first (rest x))) nn)))
+(def third-sum (apply foppl.primitives/mat-add (map (fn [x] (first (rest (rest x)))) nn)))
+(def fourth-sum  (apply foppl.primitives/mat-add (map (fn [x] (first (rest (rest (rest x))))) nn)))
 (def full-mat (vector first-sum second-sum third-sum fourth-sum))
-(def expected-full-mat (div full-mat (count samples4)))
-
+(def expected-full-mat (div full-mat (count nn)))
