@@ -17,6 +17,22 @@
          :else (throw (Exception. (str "Expression type unknown." exp)))
          ))
 
+(defn load-truth [type i]
+  (load-file (str (cwd) "../CS532-HW2/programs/tests/" type "/test_" i ".truth")))
+
+(defn run-deterministic-tests []
+  (for [i (range 1 13)]
+    (do (print (str "running test " i " "))
+    (let [ast (graph-programs-test i)
+          truth (load-truth "deterministic" i)
+          ret (sample-from-joint ast)]
+            (if (> (abs (diff truth ret)) 0.001)
+              (let [msg (str "return value " ret " is not equal to truth " truth " for exp " ast)]
+                    (do (println msg) msg))
+                    (do (println "passed test " i) (str "passed test " i)))))))
+
+(run-deterministic-tests)
+
 (defn probabilistic-eval [exp var-map]
   (match [exp]
          [([h & t] :seq)]
@@ -73,25 +89,18 @@
 (defn graph-tests [type i]
   (json/read-str ((shell/with-sh-dir
     (str (cwd) "../daphne")
-    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/original_programs/tests/" type "/test_" i ".daphne"))) :out)))
+    (sh "lein" "run" "-f" "json" "desugar" "-i" (str "../CS532-HW2/programs/tests/" type "/test_" i ".daphne"))) :out)))
 
-(defn run-deterministic-tests []
-  (for [i (map (fn [x] (+ 1 x)) (range 13))]
-    (do (println (str "running test " i))
-    (let [ast (graph-tests "deterministic" i)
-          truth (load-truth i)
-          [ret sig] (evaluate-program ast)]
-            (if (> (abs (diff truth ret)) 0.001)
-              (let [msg (str "return value " ret " is not equal to truth " truth " for exp " ast)]
-                    (do (print msg) msg)
-              (do (print "passed test " i) (str "passed test " i))))))))
-
-;; (run-deterministic-tests)
 
 (defn graph-programs [i]
   (json/read-str ((shell/with-sh-dir
     (str (cwd) "../daphne")
-    (sh "lein" "run" "-f" "json" "graph" "-i" (str "../CS532-HW2/original_programs/" i ".daphne"))) :out)))
+    (sh "lein" "run" "-f" "json" "graph" "-i" (str "../CS532-HW2/programs/" i ".daphne"))) :out)))
+
+(defn graph-programs-test [i]
+  (json/read-str ((shell/with-sh-dir
+    (str (cwd) "../daphne")
+    (sh "lein" "run" "-f" "json" "graph" "-i" (str "../CS532-HW2/programs/tests/deterministic/test_" i ".daphne"))) :out)))
 
 (defn get-stream
   ([ast] (get-stream ast 1))
@@ -115,14 +124,14 @@
 ;; generate programs
 (def program1 (graph-programs 1))
 (def program2 (graph-programs 2))
+(def program3 (graph-programs 3))
 (def program4 (graph-programs 4))
-(def program5 (graph-programs 5))
 
 ;; take 1000 samples for each task
 (def mu (sample-task program1 1000))
 (def slope-bias (sample-task program2 1000))
-(def hmm (sample-task program4 1000))
-(def nn (sample-task program5 1000))
+(def hmm (sample-task program3 1000))
+(def nn (sample-task program4 1000))
 
 ;; create histograms
 (save (histogram mu) "mu.png")
@@ -151,9 +160,9 @@
 (save (histogram nnb1) "nnb1.png")
 
 ;; calculate expectations
-(calc-expectation mu)
-(calc-expectation slope-bias)
-(calc-expectation hmm)
+(def mu-mean (calc-expectation mu))
+(def slope-bias-mean (calc-expectation slope-bias))
+(def hmm-mean (calc-expectation hmm))
 
 ;; calculate expectation of neural network task
 (def first-sum (apply foppl.primitives/mat-add (map (fn [x] (first x)) nn)))
